@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeltaTime</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<meta name="theme-color" content="#0ea5a4">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="DeltaTime">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ===== Temalar (CSS değişkenleri) ===== */
+  :root, :root[data-theme="modern"] {
+    --bg:#eef2f7; --card:#ffffff; --card2:#f1f5f9; --line:#e3e8ef; --text:#0f172a; --muted:#64748b;
+    --green:#16a34a; --red:#e11d48; --orange:#f59e0b; --blue:#2563eb; --accent:#0ea5a4;
+    --grad1:#10b981; --grad2:#0ea5a4; --shadow:0 6px 20px rgba(2,32,71,0.08); --on-grad:#ffffff;
+  }
+  :root[data-theme="koyu"] {
+    --bg:#0f172a; --card:#1e293b; --card2:#334155; --line:#475569; --text:#e2e8f0; --muted:#94a3b8;
+    --green:#22c55e; --red:#ef4444; --orange:#f59e0b; --blue:#3b82f6; --accent:#3b82f6;
+    --grad1:#1e3a8a; --grad2:#0e7490; --shadow:0 4px 20px rgba(0,0,0,0.35); --on-grad:#ffffff;
+  }
+  :root[data-theme="okyanus"] {
+    --bg:#eaf2fb; --card:#ffffff; --card2:#e3edfa; --line:#cdddf2; --text:#0b2545; --muted:#5a7290;
+    --green:#0ea5a4; --red:#e11d48; --orange:#f59e0b; --blue:#2563eb; --accent:#2563eb;
+    --grad1:#2563eb; --grad2:#06b6d4; --shadow:0 6px 20px rgba(3,37,84,0.10); --on-grad:#ffffff;
+  }
+  :root[data-theme="gunBatimi"] {
+    --bg:#fff7f0; --card:#ffffff; --card2:#fdeede; --line:#f6dcc4; --text:#3a2415; --muted:#977563;
+    --green:#16a34a; --red:#e11d48; --orange:#ea580c; --blue:#2563eb; --accent:#ea580c;
+    --grad1:#fb7185; --grad2:#f59e0b; --shadow:0 6px 20px rgba(120,53,15,0.10); --on-grad:#ffffff;
+  }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 16px; display: flex; justify-content: center;
+    transition: background 0.2s, color 0.2s;
+  }
+  .app { width: 100%; max-width: 520px; }
+
+  /* ===== Üst bar ===== */
+  .appbar { background: linear-gradient(135deg, var(--grad1), var(--grad2)); color: var(--on-grad);
+    border-radius: 18px; padding: 16px 18px 14px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .appbar-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .appbar-title { font-size: 1.3rem; font-weight: 700; }
+  .appbar-controls { display: flex; gap: 8px; }
+  .appbar select { background: rgba(255,255,255,0.18); color: var(--on-grad); border: 1px solid rgba(255,255,255,0.45);
+    border-radius: 8px; padding: 5px 7px; font-size: 0.78rem; cursor: pointer; }
+  .appbar select option { color: #0f172a; }
+  .date { margin-top: 8px; font-size: 0.9rem; opacity: 0.9; }
+
+  .card { background: var(--card); border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+
+  .clock { text-align: center; font-size: 2.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .status { text-align: center; color: var(--muted); margin-top: 4px; font-size: 0.9rem; min-height: 1.2em; }
+
+  .gun-bilgi-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 0.88rem; }
+  .gun-bilgi-row:last-child { border-bottom: none; }
+  .gun-bilgi-row .gb-label { color: var(--muted); }
+  .gun-bilgi-row .gb-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .gun-bilgi-row .gb-val.gec { color: var(--red); }
+  .gun-bilgi-row .gb-val.erken { color: var(--green); }
+  .gb-molalar { margin-top: 4px; }
+  .gb-mola-item { display: flex; justify-content: space-between; padding: 3px 0; font-size: 0.82rem; color: var(--muted); }
+  .gb-mola-item .gb-mola-etiket { color: var(--orange); font-weight: 500; }
+
+  .mola-sayac { display: none; text-align: center; margin-top: 8px; padding: 8px 12px; border-radius: 10px;
+    background: rgba(245,158,11,0.12); border: 1px solid var(--orange); color: var(--orange); font-size: 0.9rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .mola-sayac.show { display: block; }
+
+  .uyari { display: none; background: rgba(239,68,68,0.12); border: 1px solid var(--red); color: var(--red);
+    border-radius: 10px; padding: 10px 12px; margin-top: 12px; font-size: 0.85rem; text-align: center; }
+  .uyari.show { display: block; }
+  .uyari button { background: var(--red); margin-top: 8px; padding: 8px 14px; font-size: 0.8rem; border-radius: 8px; }
+
+  .stats { display: flex; justify-content: space-around; margin: 18px 0; }
+  .stat { text-align: center; }
+  .stat .val { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .lbl { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  button { border: none; border-radius: 12px; padding: 14px; font-size: 1rem; font-weight: 600; color: #fff; cursor: pointer; transition: opacity 0.15s, transform 0.05s; }
+  button:active:not(:disabled) { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .b-giris { background: var(--green); } .b-cikis { background: var(--red); }
+  .b-mola { background: var(--orange); } .b-molabit { background: var(--blue); }
+  .full { grid-column: 1 / -1; }
+
+  .section-title { font-size: 1.05rem; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .mini { background: var(--card2); color: var(--text); font-size: 0.8rem; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; }
+  .mini:hover { background: var(--line); }
+  .mini.aktif { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .ozet { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .ozet .box { background: var(--card2); border-radius: 12px; padding: 12px 8px; text-align: center; }
+  .ozet .box .v { font-size: 1.15rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ozet .box .k { font-size: 0.8rem; color: var(--green); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .ozet .box .l { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .ayar-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 8px; font-size: 0.9rem; }
+  .ayar-row input { width: 90px; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 6px; text-align: end; font-size: 0.95rem; }
+  .hint { font-size: 0.78rem; color: var(--muted); margin-top: 10px; }
+
+  /* Senkronizasyon */
+  .sync-input { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px; font-size: 0.85rem; margin-top: 6px; }
+  .sync-check { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 0.9rem; cursor: pointer; }
+  .sync-check input { width: auto; cursor: pointer; }
+  .sync-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  #senkDurum { font-weight: 600; }
+  .sync-title-row { display: flex; align-items: center; gap: 8px; }
+  .sync-help-btn { background: var(--accent); color: #fff; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.75rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sync-help-btn:hover { opacity: 0.8; }
+  .sync-guide { display: none; background: var(--card2); border-radius: 10px; padding: 14px; margin-top: 10px; font-size: 0.82rem; line-height: 1.55; }
+  .sync-guide.show { display: block; }
+  .sync-guide ol { padding-inline-start: 18px; margin: 6px 0 0; }
+  .sync-guide li { margin-bottom: 6px; }
+  .sync-guide code { background: var(--bg); padding: 1px 5px; border-radius: 4px; font-size: 0.78rem; }
+
+  /* Takvim */
+  .takvim { margin-top: 6px; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cal-title { font-weight: 600; font-size: 0.95rem; }
+  .cal-nav { background: var(--card2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 4px 14px; font-size: 1.1rem; font-weight: 700; line-height: 1; }
+  .cal-nav:hover { background: var(--line); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-dows { margin-bottom: 5px; }
+  .cal-dow { text-align: center; font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+  .cal-cell { aspect-ratio: 1 / 1; border-radius: 10px; background: var(--card2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+  .cal-cell.tikla { cursor: pointer; }
+  .cal-cell.tikla:hover { background: var(--line); }
+  .cal-cell.ay-disi { opacity: 0.3; }
+  .cal-cell.calisildi { box-shadow: inset 0 0 0 2px var(--green); }
+  .cal-cell .gun-no { font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+  .cal-cell.tatil .gun-no { color: #a78bfa; }
+  .cal-cell.bugun .gun-no { background: var(--orange); color: #fff; border-radius: 50%; width: 1.9em; height: 1.9em; display: flex; align-items: center; justify-content: center; }
+  .cal-cell .cal-net { font-size: 0.58rem; color: var(--green); font-variant-numeric: tabular-nums; line-height: 1; }
+
+  .record { background: var(--card2); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
+  .record .r-head { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 6px; align-items: center; }
+  .record .r-net { color: var(--green); font-variant-numeric: tabular-nums; }
+  .record .r-row { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+  .record .r-breaks { font-size: 0.8rem; color: var(--orange); margin-top: 6px; }
+  .record .r-note { font-size: 0.82rem; color: var(--text); font-style: italic; margin-top: 6px; opacity: 0.85; }
+  .record .r-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .record .r-actions button { padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; font-weight: 500; }
+  .a-edit { background: var(--blue); } .a-del { background: var(--red); }
+  .fark-art { color: var(--green); } .fark-eksi { color: var(--red); }
+  .empty { text-align: center; color: var(--muted); padding: 20px; }
+  .live-badge { display: inline-block; font-size: 0.7rem; background: var(--green); color: #fff; padding: 2px 8px; border-radius: 999px; margin-inline-start: 6px; }
+  .tatil-badge { display: inline-block; font-size: 0.7rem; background: #a78bfa; color: #fff; padding: 2px 8px; border-radius: 999px; margin-inline-start: 6px; }
+  .izin-badge { display: inline-block; font-size: 0.7rem; background: #3b82f6; color: #fff; padding: 2px 8px; border-radius: 999px; margin-inline-start: 6px; }
+  .rapor-badge { display: inline-block; font-size: 0.7rem; background: #ef4444; color: #fff; padding: 2px 8px; border-radius: 999px; margin-inline-start: 6px; }
+  .kismi-badge { display: inline-block; font-size: 0.7rem; background: var(--orange); color: #fff; padding: 2px 8px; border-radius: 999px; margin-inline-start: 6px; }
+  .cal-cell.izin-gun { box-shadow: inset 0 0 0 2px #3b82f6; }
+  .cal-cell.rapor-gun { box-shadow: inset 0 0 0 2px #ef4444; }
+  .cal-cell.kismi-gun { box-shadow: inset 0 0 0 2px var(--orange); }
+  .cal-cell .cal-durum { font-size: 0.5rem; line-height: 1; }
+  .cal-cell .cal-durum.cd-izin { color: #3b82f6; }
+  .cal-cell .cal-durum.cd-rapor { color: #ef4444; }
+  .cal-cell .cal-durum.cd-kismi { color: var(--orange); }
+  .sess-line { font-size: 0.8rem; color: var(--muted); margin-top: 3px; }
+
+  /* Modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: flex-start; justify-content: center; padding: 20px; overflow-y: auto; z-index: 10; }
+  .overlay.show { display: flex; }
+  .modal { background: var(--card); border-radius: 16px; padding: 20px; width: 100%; max-width: 520px; }
+  .modal h2 { font-size: 1.2rem; margin-bottom: 14px; }
+  .modal label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px; }
+  .modal input, .modal textarea { width: 100%; background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px; font-size: 0.9rem; font-family: inherit; }
+  .modal textarea { resize: vertical; min-height: 48px; }
+  .field { margin-bottom: 12px; }
+  .oturum-box { background: var(--card2); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+  .oturum-box .ob-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 600; font-size: 0.9rem; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mola-satir { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 8px; }
+  .icon-btn { background: var(--red); border-radius: 8px; padding: 8px 10px; font-size: 0.8rem; }
+  .add-btn { background: var(--line); color: var(--text); width: 100%; padding: 8px; font-size: 0.85rem; font-weight: 500; margin-top: 4px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .modal-actions button { flex: 1; }
+  .b-save { background: var(--green); } .b-cancel { background: var(--card2); color: var(--text); }
+
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button:focus-visible { outline-offset: 3px; }
+
+  .dlg { background: var(--card); border-radius: 16px; padding: 22px; width: 100%; max-width: 380px; text-align: center; }
+  .dlg p { font-size: 0.95rem; margin-bottom: 18px; line-height: 1.4; }
+  .dlg-actions { display: flex; gap: 10px; }
+  .dlg-actions button { flex: 1; }
+  .b-evet { background: var(--blue); } .b-hayir { background: var(--card2); color: var(--text); }
+  .b-evet.b-tehlike { background: var(--red); }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Üst bar -->
+  <header class="appbar">
+    <div class="appbar-top">
+      <div class="appbar-title">⏱️ <span data-i18n="app_title">DeltaTime</span></div>
+      <div class="appbar-controls">
+        <select id="temaSec" onchange="temaUygula(this.value)" data-i18n-aria="lbl_theme">
+          <option value="modern" data-i18n="theme_modern">Modern</option>
+          <option value="koyu" data-i18n="theme_dark">Koyu</option>
+          <option value="okyanus" data-i18n="theme_ocean">Okyanus</option>
+          <option value="gunBatimi" data-i18n="theme_sunset">Gün Batımı</option>
+        </select>
+        <select id="dilSec" onchange="dilDegistir(this.value)" data-i18n-aria="lbl_lang">
+          <option value="tr">Türkçe</option>
+          <option value="en">English</option>
+          <option value="ar">العربية</option>
+        </select>
+      </div>
+    </div>
+    <div class="date" id="today"></div>
+  </header>
+
+  <!-- Canlı kart -->
+  <div class="card">
+    <div class="clock" id="clock">00:00:00</div>
+    <div class="status" id="status"></div>
+    <div class="uyari" id="uyari" role="alert">
+      <div id="uyariText"></div>
+      <button onclick="aktifDuzenle()" data-i18n="warn_fix">✎ Çıkış saatini düzelt</button>
+      <button class="mini" style="background:var(--card2);color:var(--text)" onclick="uyariCikis()" data-i18n="warn_stillworking">Hâlâ çalışıyorum, şimdi çık</button>
+    </div>
+    <div class="mola-sayac" id="molaSayac"></div>
+    <div class="stats">
+      <div class="stat"><div class="val" id="net">00:00</div><div class="lbl" data-i18n="stat_net_today">Bugün Net</div></div>
+      <div class="stat"><div class="val" id="mola">00:00</div><div class="lbl" data-i18n="stat_break_today">Bugün Mola</div></div>
+      <div class="stat"><div class="val" id="kazanc">—</div><div class="lbl" data-i18n="stat_earn_today">Bugün Kazanç</div></div>
+    </div>
+    <div class="btns">
+      <button class="b-giris" id="btnGiris" onclick="girisYap()" data-i18n="btn_giris" data-i18n-aria="aria_giris">▶ Giriş</button>
+      <button class="b-cikis" id="btnCikis" onclick="cikisYap()" data-i18n="btn_cikis" data-i18n-aria="aria_cikis">⏹ Çıkış</button>
+      <button class="b-mola full" id="btnMola" onclick="molaToggle()" data-i18n-aria="aria_mola">☕ Mola Başlat</button>
+    </div>
+  </div>
+
+  <!-- Gün Bilgisi -->
+  <div class="card" id="gunBilgiKart" style="display:none">
+    <div class="section-title" data-i18n="sec_dayinfo">📋 Bugünün Detayı</div>
+    <div id="gunBilgi"></div>
+  </div>
+
+  <!-- Özet -->
+  <div class="card">
+    <div class="section-title" data-i18n="sec_summary">📊 Özet</div>
+    <div class="ozet">
+      <div class="box"><div class="v" id="haftaTop">00:00</div><div class="k" id="haftaKaz"></div><div class="l" data-i18n="box_week">Bu Hafta</div></div>
+      <div class="box"><div class="v" id="ayTop">00:00</div><div class="k" id="ayKaz"></div><div class="l" data-i18n="box_month">Bu Ay</div></div>
+      <div class="box"><div class="v" id="tumTop">00:00</div><div class="k" id="tumKaz"></div><div class="l" data-i18n="box_all">Tüm Zamanlar</div></div>
+    </div>
+    <div class="ayar-row">
+      <span data-i18n="set_weekday_target">Hafta içi hedef (saat):</span>
+      <input type="number" id="hedef" min="0" max="24" step="0.25" onchange="ayarKaydet()">
+    </div>
+    <div class="ayar-row">
+      <span data-i18n="set_sat_target">Cumartesi hedefi (saat):</span>
+      <input type="number" id="cmtHedef" min="0" max="24" step="0.5" onchange="ayarKaydet()">
+    </div>
+    <div class="ayar-row">
+      <span data-i18n="set_wage">Saatlik ücret (₺):</span>
+      <input type="number" id="ucret" min="0" step="1" onchange="ayarKaydet()">
+    </div>
+    <div class="hint" data-i18n="hint_sunday">🌴 Pazar otomatik tatildir.</div>
+    <div class="hint" id="haftaFark"></div>
+  </div>
+
+  <!-- Takvim -->
+  <div class="card">
+    <div class="section-title">
+      <span data-i18n="sec_calendar">📅 Çalışma Takvimi</span>
+      <span>
+        <button class="mini" id="g7" onclick="takvimGun('hafta')" data-i18n="tab_week">Bu Hafta</button>
+        <button class="mini" id="g30" onclick="takvimGun('ay')" data-i18n="tab_month">Ay</button>
+      </span>
+    </div>
+    <div class="takvim" id="chart"></div>
+  </div>
+
+  <!-- Kayıtlar -->
+  <div class="card">
+    <div class="section-title">
+      <span data-i18n="sec_history">📅 Geçmiş Kayıtlar</span>
+      <span>
+        <button class="mini" id="gunEkleBtn" onclick="kayitEkleAc()" data-i18n="btn_add_day" data-i18n-aria="aria_add_day">+ Gün Ekle</button>
+        <button class="mini" onclick="disaAktarJSON()" data-i18n="exp_json" data-i18n-aria="aria_exp_json">⬇ JSON</button>
+        <button class="mini" onclick="disaAktarCSV()" data-i18n="exp_csv" data-i18n-aria="aria_exp_csv">⬇ CSV</button>
+        <button class="mini" onclick="document.getElementById('importFile').click()" data-i18n="imp" data-i18n-aria="aria_imp">⬆ İçe</button>
+        <button class="mini" onclick="tumunuSil()" data-i18n="del_all" data-i18n-aria="aria_del_all" style="border-color:var(--red);color:var(--red)">🗑 Tümü</button>
+      </span>
+    </div>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="iceAktar(event)" aria-hidden="true" tabindex="-1">
+    <div id="liste"></div>
+  </div>
+
+  <!-- Senkronizasyon -->
+  <div class="card">
+    <div class="section-title">
+      <span class="sync-title-row">
+        <span data-i18n="sec_sync">🔄 Senkronizasyon (Google Sheet)</span>
+        <span style="font-size:0.75rem;font-weight:400;color:var(--muted)" data-i18n="sync_optional">— isteğe bağlı</span>
+        <button class="sync-help-btn" onclick="document.getElementById('syncGuide').classList.toggle('show')" title="?" aria-label="Kurulum rehberi">?</button>
+      </span>
+    </div>
+    <div class="sync-guide" id="syncGuide">
+      <strong data-i18n="sync_guide_title">Google Sheet ile nasıl bağlanılır?</strong>
+      <ol>
+        <li data-i18n="sync_step1">Google E-Tablolar'da yeni bir boş tablo oluşturun.</li>
+        <li data-i18n="sync_step2" data-i18n-html>Üst menüden <strong>Uzantılar → Apps Script</strong>'i açın.</li>
+        <li data-i18n="sync_step3" data-i18n-html>Editördeki tüm kodu silip, projedeki <code>google-apps-script.gs</code> dosyasının içeriğini yapıştırın ve kaydedin.</li>
+        <li data-i18n="sync_step4" data-i18n-html>Sağ üstte <strong>Dağıt → Yeni dağıtım</strong>'a tıklayın. Tür: <strong>Web uygulaması</strong>, Erişim: <strong>Herkes</strong> seçin ve dağıtın.</li>
+        <li data-i18n="sync_step5" data-i18n-html>Verilen <code>…/exec</code> ile biten URL'yi kopyalayıp aşağıdaki alana yapıştırın.</li>
+        <li data-i18n="sync_step6" data-i18n-html><strong>Bağlantıyı Test Et</strong>'e tıklayın — ✓ görürseniz hazırsınız!</li>
+      </ol>
+    </div>
+    <div style="font-size:0.9rem" data-i18n="sync_url_label">Web Uygulaması URL'si:</div>
+    <input type="url" id="sheetUrl" class="sync-input" data-i18n-ph="sync_url_ph" onchange="senkAyarKaydet()">
+    <label class="sync-check"><input type="checkbox" id="syncOn" onchange="senkAyarKaydet()"><span data-i18n="sync_auto">Otomatik senkronizasyon</span></label>
+    <div class="sync-btns">
+      <button class="mini" onclick="senkTest()" data-i18n="sync_test_btn">Bağlantıyı Test Et</button>
+      <button class="mini" onclick="senkPush(true)" data-i18n="sync_push_btn">Şimdi Gönder</button>
+      <button class="mini" onclick="senkPull()" data-i18n="sync_pull_btn">Sheet'ten Geri Yükle</button>
+      <button class="mini" onclick="scriptKopyala()" data-i18n="sync_copy_script" style="border-color:var(--accent);color:var(--accent)">📋 Apps Script Kodu</button>
+    </div>
+    <div class="hint" id="senkDurum"></div>
+  </div>
+</div>
+
+<!-- Düzenleme Modalı -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalBaslik">
+    <h2 id="modalBaslik"></h2>
+    <div class="field">
+      <label data-i18n="lbl_date">Tarih</label>
+      <input type="date" id="editDate">
+    </div>
+    <div id="oturumlar"></div>
+    <button class="add-btn" onclick="oturumEkle()" data-i18n="btn_add_session">+ Oturum ekle</button>
+    <div class="field" style="margin-top:14px">
+      <label data-i18n="lbl_day_status">Gün durumu</label>
+      <select id="editDurum" style="width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px;font-size:0.9rem">
+        <option value="normal" data-i18n="status_normal">Normal</option>
+        <option value="izin" data-i18n="status_izin">İzinli</option>
+        <option value="rapor" data-i18n="status_rapor">Raporlu</option>
+      </select>
+    </div>
+    <div class="field" style="margin-top:14px">
+      <label data-i18n="lbl_daynote">Gün notu</label>
+      <textarea id="editNot" data-i18n-ph="ph_daynote"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="b-cancel" onclick="modalKapat()" data-i18n="btn_cancel">İptal</button>
+      <button class="b-save" onclick="kaydet()" data-i18n="btn_save">Kaydet</button>
+    </div>
+    <div class="hint" data-i18n="modal_hint">Boş çıkış = devam ediyor.</div>
+  </div>
+</div>
+
+<!-- Onay / Bilgi diyaloğu -->
+<div class="overlay" id="dlgOverlay">
+  <div class="dlg" role="alertdialog" aria-modal="true" aria-labelledby="dlgMesaj">
+    <p id="dlgMesaj"></p>
+    <div class="dlg-actions">
+      <button class="b-hayir" id="dlgHayir"></button>
+      <button class="b-evet" id="dlgEvet"></button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY = "mesaiKayitlari";
+const HEDEF_KEY = "mesaiHedefSaat";
+const CMT_KEY = "mesaiCmtHedef";
+const UCRET_KEY = "mesaiUcret";
+const THEME_KEY = "mesaiTema";
+const DIL_KEY = "mesaiDil";
+const SHEET_URL_KEY = "mesaiSheetUrl";
+const SYNC_ON_KEY = "mesaiSyncOn";
+const SONSENK_KEY = "mesaiSonSenk";
+const UYARI_MS = 12 * 3600000;
+let takvimModu = "hafta";
+let takvimRef = new Date();
+let aktifGun = null;
+
+/* ===================== i18n ===================== */
+let dilKodu = localStorage.getItem(DIL_KEY) || "tr";
+const PARA_LOCALE = { tr:"tr-TR", en:"en-US", ar:"ar-EG" };
+const LOC = {
+  tr: {
+    gunUzun: ["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"],
+    ayUzun: ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"],
+    ayKisa: ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"],
+    dowBas: ["Pt","Sa","Ça","Pe","Cu","Ct","Pa"],
+    csvBaslik: ["Tarih","Oturum","Giris","Cikis","Mola(dk)","Net(dk)","Kazanc","Etiketler","Not"]
+  },
+  en: {
+    gunUzun: ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+    ayUzun: ["January","February","March","April","May","June","July","August","September","October","November","December"],
+    ayKisa: ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],
+    dowBas: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"],
+    csvBaslik: ["Date","Session","In","Out","Break(min)","Net(min)","Earnings","Labels","Note"]
+  },
+  ar: {
+    gunUzun: ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"],
+    ayUzun: ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"],
+    ayKisa: ["ينا","فبر","مار","أبر","ماي","يون","يول","أغس","سبت","أكت","نوف","ديس"],
+    dowBas: ["إث","ثل","أر","خم","جم","سب","أح"],
+    csvBaslik: ["التاريخ","الجلسة","الدخول","الخروج","الاستراحة(د)","الصافي(د)","الأجر","الوسوم","ملاحظة"]
+  }
+};
+const I18N = {
+  tr: {
+    app_title:"DeltaTime", lbl_theme:"Tema", lbl_lang:"Dil",
+    theme_modern:"Modern", theme_dark:"Koyu", theme_ocean:"Okyanus", theme_sunset:"Gün Batımı",
+    status_none:"Henüz giriş yapılmadı", status_break:"☕ Molada", status_working:"Çalışıyor — Giriş: {0}", status_lastout:"Son çıkış: {0}",
+    warn_text:"⚠️ {0} saattir açık oturum! Çıkış yapmayı unuttuysan saati düzeltebilirsin.",
+    warn_fix:"✎ Çıkış saatini düzelt", warn_stillworking:"Hâlâ çalışıyorum, şimdi çık",
+    stat_net_today:"Bugün Net", stat_break_today:"Bugün Mola", stat_earn_today:"Bugün Kazanç",
+    btn_giris:"▶ Giriş", btn_cikis:"⏹ Çıkış", btn_mola_start:"☕ Mola Başlat", btn_mola_end:"✅ Molayı Bitir",
+    aria_giris:"İşe giriş yap", aria_cikis:"İşten çıkış yap", aria_mola:"Mola başlat veya bitir",
+    sec_summary:"📊 Özet", box_week:"Bu Hafta", box_month:"Bu Ay", box_all:"Tüm Zamanlar",
+    set_weekday_target:"Hafta içi hedef (saat):", set_sat_target:"Cumartesi hedefi (saat):", set_wage:"Saatlik ücret (₺):",
+    hint_sunday:"🌴 Pazar otomatik tatildir (hedef 0); o gün çalışılırsa tamamı fazla mesai sayılır.",
+    week_worked:"Bu hafta {0} gün çalışıldı", week_target_lbl:"hedef {0}", over:"fazla", under:"eksik",
+    sec_calendar:"📅 Çalışma Takvimi", tab_week:"Bu Hafta", tab_month:"Ay",
+    prev_week:"Önceki hafta", next_week:"Sonraki hafta", prev_month:"Önceki ay", next_month:"Sonraki ay",
+    sec_history:"📅 Geçmiş Kayıtlar", btn_add_day:"+ Gün Ekle", exp_json:"⬇ JSON", exp_csv:"⬇ CSV", imp:"⬆ İçe", del_all:"🗑 Tümü",
+    aria_add_day:"Geçmişe yeni gün ekle", aria_exp_json:"JSON olarak dışa aktar", aria_exp_csv:"CSV olarak dışa aktar", aria_imp:"JSON dosyasından içe aktar", aria_del_all:"Tüm kayıtları sil",
+    empty_list:"Henüz kayıt yok.", badge_ongoing:"Devam ediyor", badge_holiday:"🌴 Tatil",
+    row_target:"Hedefe göre ({0})", row_overtime_holiday:"Fazla (tatil)",
+    breaks_summary:"☕ {0} mola · {1}", warn_open_excluded:"⚠️ Açık oturum 12 saati aştı, toplama dahil edilmedi. Çıkışı düzeltin.",
+    btn_edit:"✎ Düzenle", btn_delete:"🗑 Sil", aria_edit_day:"{0} kaydını düzenle", aria_delete_day:"{0} kaydını sil",
+    modal_edit_title:"Kaydı Düzenle", modal_add_title:"Yeni Gün Ekle",
+    lbl_date:"Tarih", btn_add_session:"+ Oturum (giriş-çıkış) ekle", lbl_daynote:"Gün notu", ph_daynote:"örn. fazla mesai, evden çalışma...",
+    btn_cancel:"İptal", btn_save:"Kaydet", modal_hint:'Boş bırakılan çıkış = "devam ediyor". Saatler cihazınızın yerel saatine göredir.',
+    lbl_break_start:"Mola baş.", lbl_break_end:"Mola bit.", lbl_label:"Etiket", ph_label:"öğle",
+    session_n:"Oturum {0}", btn_session_delete:"Oturumu sil", lbl_giris:"Giriş", lbl_cikis:"Çıkış", btn_add_break:"+ Mola ekle",
+    aria_break_delete:"{0}. oturumun {1}. molasını sil", default_break_label:"Mola",
+    dlg_yes:"Evet", dlg_ok:"Tamam", dlg_cancel:"İptal",
+    confirm_delete_day:"{0} kaydı silinsin mi?", confirm_delete_all:"TÜM mesai kayıtları kalıcı olarak silinecek. Bu işlem geri alınamaz! Devam edilsin mi?",
+    err_delete_failed:"⚠️ Silme başarısız (tarayıcı depolaması engelli olabilir).",
+    confirm_now_out:`Bu işlem {0}'lik sürenin tamamını çalışma olarak kaydeder. Çıkışı unuttuysan bunun yerine "Çıkış saatini düzelt"i kullan. Yine de şimdi çıkılsın mı?`,
+    err_save_failed:"⚠️ Veri kaydedilemedi! Tarayıcı depolaması dolu olabilir ya da gizli sekmede yazma engellenmiş olabilir. Değişiklik kalıcı olmadı.",
+    err_setting_save_failed:"⚠️ Ayar kaydedilemedi (tarayıcı depolaması engelli olabilir).",
+    val_date_empty:"Tarih boş olamaz.", val_giris_invalid:"Her oturumun geçerli bir giriş saati olmalı.", val_cikis_invalid:"Çıkış saati geçersiz.",
+    val_cikis_before:"Çıkış, girişten önce olamaz.", val_break_start_invalid:"Mola başlangıcı geçersiz.", val_break_end_invalid:"Mola bitişi geçersiz.",
+    val_break_end_before:"Mola bitişi başlangıçtan önce olamaz.", val_multi_open:"Aynı günde birden fazla açık (çıkışsız) oturum olamaz.",
+    val_overlap:"Oturumlar çakışıyor (saatler üst üste biniyor). Lütfen düzeltin.", val_open_elsewhere:"{0} gününde zaten açık bir oturum var. Önce onu kapatın.",
+    import_invalid_file:"Geçersiz dosya. Lütfen daha önce dışa aktarılan bir JSON seçin.",
+    import_none_valid:"Dosyada geçerli mesai kaydı bulunamadı. (Beklenen biçim: dışa aktarılan JSON.)",
+    import_confirm:"{0} gün içe aktarılacak. Mevcut kayıtlarla BİRLEŞTİRİLECEK (aynı tarih güncellenir). Devam edilsin mi?",
+    import_skipped:"({0} geçersiz kayıt atlanacak.)", import_done:"İçe aktarma tamamlandı. {0} gün eklendi.", import_skipped_done:"{0} kayıt atlandı.",
+    sec_sync:"🔄 Senkronizasyon (Google Sheet)", sync_optional:"— isteğe bağlı",
+    sync_guide_title:"Google Sheet ile nasıl bağlanılır?",
+    sync_step1:"Google E-Tablolar'da yeni bir boş tablo oluşturun.",
+    sync_step2:'Üst menüden <strong>Uzantılar → Apps Script</strong>\'i açın.',
+    sync_step3:'Editördeki tüm kodu silip, projedeki <code>google-apps-script.gs</code> dosyasının içeriğini yapıştırın ve kaydedin.',
+    sync_step4:'Sağ üstte <strong>Dağıt → Yeni dağıtım</strong>\'a tıklayın. Tür: <strong>Web uygulaması</strong>, Erişim: <strong>Herkes</strong> seçin ve dağıtın.',
+    sync_step5:'Verilen <code>…/exec</code> ile biten URL\'yi kopyalayıp aşağıdaki alana yapıştırın.',
+    sync_step6:'<strong>Bağlantıyı Test Et</strong>\'e tıklayın — ✓ görürseniz hazırsınız!',
+    sync_url_label:"Web Uygulaması URL'si:", sync_url_ph:"https://script.google.com/.../exec",
+    sync_auto:"Otomatik senkronizasyon", sync_test_btn:"Bağlantıyı Test Et", sync_push_btn:"Şimdi Gönder", sync_pull_btn:"Sheet'ten Geri Yükle", sync_copy_script:"📋 Apps Script Kodu", sync_copied:"✓ Kod panoya kopyalandı!",
+    sync_idle:"Henüz senkronize edilmedi.", sync_need_url:"Önce Google Sheet Web Uygulaması URL'sini girin.",
+    sync_sending:"Gönderiliyor…", sync_ok:"✓ Senkronize edildi ({0})", sync_err:"⚠️ Senkronizasyon hatası: {0}",
+    sync_loading:"Yükleniyor…", sync_pulled:"✓ Sheet'ten {0} gün geri yüklendi.", sync_testing:"Test ediliyor…", sync_test_ok:"✓ Bağlantı başarılı.",
+    sync_pull_confirm:"Google Sheet'teki veriler bu cihazdaki TÜM yerel kayıtların yerine geçecek. Devam edilsin mi?",
+    break_timer:"☕ Mola süresi: {0}",
+    sec_dayinfo:"📋 Bugünün Detayı",
+    di_clockin:"Giriş", di_clockout:"Çıkış", di_target:"Hedef süre", di_breaks:"Molalar",
+    di_late:"{0} dk geç gelme", di_early:"{0} dk erken giriş", di_ontime:"Zamanında",
+    di_not_in:"Henüz giriş yok", di_ongoing:"Devam ediyor",
+    di_no_break:"Mola alınmadı",
+    lbl_day_status:"Gün durumu", status_normal:"Normal", status_izin:"İzinli", status_rapor:"Raporlu",
+    badge_izin:"📋 İzin", badge_rapor:"🏥 Rapor", badge_kismi:"⚠ Kısmi",
+    cal_izin:"İzin", cal_rapor:"Rapor", cal_kismi:"Kısmi"
+  },
+  en: {
+    app_title:"DeltaTime", lbl_theme:"Theme", lbl_lang:"Language",
+    theme_modern:"Modern", theme_dark:"Dark", theme_ocean:"Ocean", theme_sunset:"Sunset",
+    status_none:"Not clocked in yet", status_break:"☕ On break", status_working:"Working — In: {0}", status_lastout:"Last out: {0}",
+    warn_text:"⚠️ Session open for {0} hours! If you forgot to clock out, you can fix the time.",
+    warn_fix:"✎ Fix clock-out time", warn_stillworking:"Still working, clock out now",
+    stat_net_today:"Net Today", stat_break_today:"Break Today", stat_earn_today:"Earnings Today",
+    btn_giris:"▶ Clock In", btn_cikis:"⏹ Clock Out", btn_mola_start:"☕ Start Break", btn_mola_end:"✅ End Break",
+    aria_giris:"Clock in", aria_cikis:"Clock out", aria_mola:"Start or end break",
+    sec_summary:"📊 Summary", box_week:"This Week", box_month:"This Month", box_all:"All Time",
+    set_weekday_target:"Weekday target (h):", set_sat_target:"Saturday target (h):", set_wage:"Hourly wage (₺):",
+    hint_sunday:"🌴 Sunday is automatically a holiday (target 0); any work that day counts as overtime.",
+    week_worked:"{0} days worked this week", week_target_lbl:"target {0}", over:"over", under:"short",
+    sec_calendar:"📅 Work Calendar", tab_week:"This Week", tab_month:"Month",
+    prev_week:"Previous week", next_week:"Next week", prev_month:"Previous month", next_month:"Next month",
+    sec_history:"📅 Past Records", btn_add_day:"+ Add Day", exp_json:"⬇ JSON", exp_csv:"⬇ CSV", imp:"⬆ Import", del_all:"🗑 All",
+    aria_add_day:"Add a past day", aria_exp_json:"Export as JSON", aria_exp_csv:"Export as CSV", aria_imp:"Import from JSON file", aria_del_all:"Delete all records",
+    empty_list:"No records yet.", badge_ongoing:"Ongoing", badge_holiday:"🌴 Holiday",
+    row_target:"vs target ({0})", row_overtime_holiday:"Overtime (holiday)",
+    breaks_summary:"☕ {0} breaks · {1}", warn_open_excluded:"⚠️ Open session exceeded 12h, excluded from totals. Please fix the clock-out.",
+    btn_edit:"✎ Edit", btn_delete:"🗑 Delete", aria_edit_day:"Edit record of {0}", aria_delete_day:"Delete record of {0}",
+    modal_edit_title:"Edit Record", modal_add_title:"Add New Day",
+    lbl_date:"Date", btn_add_session:"+ Add session (in-out)", lbl_daynote:"Day note", ph_daynote:"e.g. overtime, work from home...",
+    btn_cancel:"Cancel", btn_save:"Save", modal_hint:'Empty clock-out = "ongoing". Times are in your device local time.',
+    lbl_break_start:"Break start", lbl_break_end:"Break end", lbl_label:"Label", ph_label:"lunch",
+    session_n:"Session {0}", btn_session_delete:"Delete session", lbl_giris:"In", lbl_cikis:"Out", btn_add_break:"+ Add break",
+    aria_break_delete:"Delete break {1} of session {0}", default_break_label:"Break",
+    dlg_yes:"Yes", dlg_ok:"OK", dlg_cancel:"Cancel",
+    confirm_delete_day:"Delete record of {0}?", confirm_delete_all:"ALL records will be permanently deleted. This cannot be undone! Continue?",
+    err_delete_failed:"⚠️ Delete failed (browser storage may be blocked).",
+    confirm_now_out:'This records the full {0} as work. If you forgot to clock out, use "Fix clock-out time" instead. Clock out now anyway?',
+    err_save_failed:"⚠️ Could not save! Browser storage may be full or blocked (private tab?). Change was not persisted.",
+    err_setting_save_failed:"⚠️ Could not save setting (browser storage may be blocked).",
+    val_date_empty:"Date cannot be empty.", val_giris_invalid:"Each session needs a valid clock-in time.", val_cikis_invalid:"Clock-out time is invalid.",
+    val_cikis_before:"Clock-out cannot be before clock-in.", val_break_start_invalid:"Break start is invalid.", val_break_end_invalid:"Break end is invalid.",
+    val_break_end_before:"Break end cannot be before its start.", val_multi_open:"A day cannot have more than one open (no clock-out) session.",
+    val_overlap:"Sessions overlap (times collide). Please fix.", val_open_elsewhere:"There is already an open session on {0}. Close it first.",
+    import_invalid_file:"Invalid file. Please choose a previously exported JSON.",
+    import_none_valid:"No valid records found in file. (Expected: exported JSON.)",
+    import_confirm:"{0} days will be imported and MERGED with existing records (same date is updated). Continue?",
+    import_skipped:"({0} invalid records will be skipped.)", import_done:"Import complete. {0} days added.", import_skipped_done:"{0} records skipped.",
+    sec_sync:"🔄 Sync (Google Sheet)", sync_optional:"— optional",
+    sync_guide_title:"How to connect with Google Sheet?",
+    sync_step1:"Create a new blank spreadsheet in Google Sheets.",
+    sync_step2:'Open <strong>Extensions → Apps Script</strong> from the top menu.',
+    sync_step3:'Delete all code in the editor, paste the contents of <code>google-apps-script.gs</code>, and save.',
+    sync_step4:'Click <strong>Deploy → New deployment</strong>. Type: <strong>Web app</strong>, Access: <strong>Anyone</strong>, then deploy.',
+    sync_step5:'Copy the URL ending in <code>…/exec</code> and paste it in the field below.',
+    sync_step6:'Click <strong>Test connection</strong> — if you see ✓, you\'re all set!',
+    sync_url_label:"Web App URL:", sync_url_ph:"https://script.google.com/.../exec",
+    sync_auto:"Automatic sync", sync_test_btn:"Test connection", sync_push_btn:"Push now", sync_pull_btn:"Restore from Sheet", sync_copy_script:"📋 Apps Script Code", sync_copied:"✓ Code copied to clipboard!",
+    sync_idle:"Not synced yet.", sync_need_url:"Enter the Google Sheet Web App URL first.",
+    sync_sending:"Sending…", sync_ok:"✓ Synced ({0})", sync_err:"⚠️ Sync error: {0}",
+    sync_loading:"Loading…", sync_pulled:"✓ Restored {0} days from Sheet.", sync_testing:"Testing…", sync_test_ok:"✓ Connection OK.",
+    sync_pull_confirm:"Data from the Google Sheet will REPLACE ALL local records on this device. Continue?",
+    break_timer:"☕ Break: {0}",
+    sec_dayinfo:"📋 Today's Details",
+    di_clockin:"Clock In", di_clockout:"Clock Out", di_target:"Target hours", di_breaks:"Breaks",
+    di_late:"{0} min late", di_early:"{0} min early", di_ontime:"On time",
+    di_not_in:"Not clocked in yet", di_ongoing:"Ongoing",
+    di_no_break:"No breaks taken",
+    lbl_day_status:"Day status", status_normal:"Normal", status_izin:"Leave", status_rapor:"Sick Leave",
+    badge_izin:"📋 Leave", badge_rapor:"🏥 Sick", badge_kismi:"⚠ Partial",
+    cal_izin:"Leave", cal_rapor:"Sick", cal_kismi:"Partial"
+  },
+  ar: {
+    app_title:"DeltaTime", lbl_theme:"السمة", lbl_lang:"اللغة",
+    theme_modern:"حديث", theme_dark:"داكن", theme_ocean:"محيط", theme_sunset:"غروب",
+    status_none:"لم يتم تسجيل الدخول بعد", status_break:"☕ في استراحة", status_working:"يعمل — الدخول: {0}", status_lastout:"آخر خروج: {0}",
+    warn_text:"⚠️ الجلسة مفتوحة منذ {0} ساعة! إذا نسيت تسجيل الخروج يمكنك تصحيح الوقت.",
+    warn_fix:"✎ صحّح وقت الخروج", warn_stillworking:"ما زلت أعمل، سجّل الخروج الآن",
+    stat_net_today:"صافي اليوم", stat_break_today:"استراحة اليوم", stat_earn_today:"أجر اليوم",
+    btn_giris:"▶ دخول", btn_cikis:"⏹ خروج", btn_mola_start:"☕ بدء استراحة", btn_mola_end:"✅ إنهاء الاستراحة",
+    aria_giris:"تسجيل الدخول", aria_cikis:"تسجيل الخروج", aria_mola:"بدء أو إنهاء الاستراحة",
+    sec_summary:"📊 الملخص", box_week:"هذا الأسبوع", box_month:"هذا الشهر", box_all:"كل الأوقات",
+    set_weekday_target:"هدف أيام الأسبوع (ساعة):", set_sat_target:"هدف السبت (ساعة):", set_wage:"الأجر بالساعة (₺):",
+    hint_sunday:"🌴 الأحد عطلة تلقائياً (الهدف 0)؛ أي عمل في ذلك اليوم يُحتسب عملاً إضافياً.",
+    week_worked:"تم العمل {0} يوم هذا الأسبوع", week_target_lbl:"الهدف {0}", over:"زائد", under:"ناقص",
+    sec_calendar:"📅 تقويم العمل", tab_week:"هذا الأسبوع", tab_month:"شهر",
+    prev_week:"الأسبوع السابق", next_week:"الأسبوع التالي", prev_month:"الشهر السابق", next_month:"الشهر التالي",
+    sec_history:"📅 السجلات السابقة", btn_add_day:"+ إضافة يوم", exp_json:"⬇ JSON", exp_csv:"⬇ CSV", imp:"⬆ استيراد", del_all:"🗑 الكل",
+    aria_add_day:"إضافة يوم سابق", aria_exp_json:"تصدير كـ JSON", aria_exp_csv:"تصدير كـ CSV", aria_imp:"استيراد من ملف JSON", aria_del_all:"حذف كل السجلات",
+    empty_list:"لا توجد سجلات بعد.", badge_ongoing:"جارٍ", badge_holiday:"🌴 عطلة",
+    row_target:"مقابل الهدف ({0})", row_overtime_holiday:"إضافي (عطلة)",
+    breaks_summary:"☕ {0} استراحة · {1}", warn_open_excluded:"⚠️ تجاوزت الجلسة المفتوحة 12 ساعة، استُبعدت من الإجماليات. صحّح وقت الخروج.",
+    btn_edit:"✎ تعديل", btn_delete:"🗑 حذف", aria_edit_day:"تعديل سجل {0}", aria_delete_day:"حذف سجل {0}",
+    modal_edit_title:"تعديل السجل", modal_add_title:"إضافة يوم جديد",
+    lbl_date:"التاريخ", btn_add_session:"+ إضافة جلسة (دخول-خروج)", lbl_daynote:"ملاحظة اليوم", ph_daynote:"مثال: عمل إضافي، عمل من المنزل...",
+    btn_cancel:"إلغاء", btn_save:"حفظ", modal_hint:'الخروج الفارغ = "جارٍ". الأوقات بتوقيت جهازك المحلي.',
+    lbl_break_start:"بداية الاستراحة", lbl_break_end:"نهاية الاستراحة", lbl_label:"وسم", ph_label:"غداء",
+    session_n:"الجلسة {0}", btn_session_delete:"حذف الجلسة", lbl_giris:"دخول", lbl_cikis:"خروج", btn_add_break:"+ إضافة استراحة",
+    aria_break_delete:"حذف الاستراحة {1} من الجلسة {0}", default_break_label:"استراحة",
+    dlg_yes:"نعم", dlg_ok:"حسناً", dlg_cancel:"إلغاء",
+    confirm_delete_day:"حذف سجل {0}؟", confirm_delete_all:"سيتم حذف كل السجلات نهائياً. لا يمكن التراجع! متابعة؟",
+    err_delete_failed:"⚠️ فشل الحذف (قد تكون مساحة التخزين محظورة).",
+    confirm_now_out:'هذا يسجّل كامل المدة {0} كعمل. إذا نسيت الخروج فاستخدم "صحّح وقت الخروج" بدلاً من ذلك. الخروج الآن على أي حال؟',
+    err_save_failed:"⚠️ تعذّر الحفظ! قد تكون مساحة التخزين ممتلئة أو محظورة (تبويب خاص؟). لم يتم حفظ التغيير.",
+    err_setting_save_failed:"⚠️ تعذّر حفظ الإعداد (قد تكون مساحة التخزين محظورة).",
+    val_date_empty:"لا يمكن ترك التاريخ فارغاً.", val_giris_invalid:"كل جلسة تحتاج وقت دخول صحيح.", val_cikis_invalid:"وقت الخروج غير صالح.",
+    val_cikis_before:"لا يمكن أن يكون الخروج قبل الدخول.", val_break_start_invalid:"بداية الاستراحة غير صالحة.", val_break_end_invalid:"نهاية الاستراحة غير صالحة.",
+    val_break_end_before:"لا يمكن أن تكون نهاية الاستراحة قبل بدايتها.", val_multi_open:"لا يمكن أن يحتوي اليوم على أكثر من جلسة مفتوحة واحدة.",
+    val_overlap:"الجلسات متداخلة (الأوقات متعارضة). يرجى التصحيح.", val_open_elsewhere:"توجد جلسة مفتوحة بالفعل في {0}. أغلقها أولاً.",
+    import_invalid_file:"ملف غير صالح. اختر ملف JSON مُصدّر مسبقاً.",
+    import_none_valid:"لم يُعثر على سجلات صالحة في الملف. (المتوقع: JSON مُصدّر.)",
+    import_confirm:"سيتم استيراد {0} يوم ودمجها مع السجلات الحالية (يُحدَّث نفس التاريخ). متابعة؟",
+    import_skipped:"(سيتم تخطي {0} سجل غير صالح.)", import_done:"اكتمل الاستيراد. تمت إضافة {0} يوم.", import_skipped_done:"تم تخطي {0} سجل.",
+    sec_sync:"🔄 المزامنة (Google Sheet)", sync_optional:"— اختياري",
+    sync_guide_title:"كيفية الربط مع Google Sheet؟",
+    sync_step1:"أنشئ جدول بيانات فارغًا جديدًا في Google Sheets.",
+    sync_step2:'افتح <strong>الإضافات → Apps Script</strong> من القائمة العلوية.',
+    sync_step3:'احذف كل الكود في المحرر، والصق محتوى <code>google-apps-script.gs</code>، ثم احفظ.',
+    sync_step4:'انقر <strong>النشر → نشر جديد</strong>. النوع: <strong>تطبيق ويب</strong>، الوصول: <strong>الجميع</strong>، ثم انشر.',
+    sync_step5:'انسخ الرابط المنتهي بـ <code>…/exec</code> والصقه في الحقل أدناه.',
+    sync_step6:'انقر <strong>اختبار الاتصال</strong> — إذا رأيت ✓ فأنت جاهز!',
+    sync_url_label:"رابط تطبيق الويب:", sync_url_ph:"https://script.google.com/.../exec",
+    sync_auto:"مزامنة تلقائية", sync_test_btn:"اختبار الاتصال", sync_push_btn:"إرسال الآن", sync_pull_btn:"استعادة من الجدول", sync_copy_script:"📋 كود Apps Script", sync_copied:"✓ تم نسخ الكود!",
+    sync_idle:"لم تتم المزامنة بعد.", sync_need_url:"أدخل رابط تطبيق ويب Google Sheet أولاً.",
+    sync_sending:"جارٍ الإرسال…", sync_ok:"✓ تمت المزامنة ({0})", sync_err:"⚠️ خطأ مزامنة: {0}",
+    sync_loading:"جارٍ التحميل…", sync_pulled:"✓ تمت استعادة {0} يوم من الجدول.", sync_testing:"جارٍ الاختبار…", sync_test_ok:"✓ الاتصال ناجح.",
+    sync_pull_confirm:"ستحل بيانات Google Sheet محل كل السجلات المحلية على هذا الجهاز. متابعة؟",
+    break_timer:"☕ الاستراحة: {0}",
+    sec_dayinfo:"📋 تفاصيل اليوم",
+    di_clockin:"الدخول", di_clockout:"الخروج", di_target:"الساعات المطلوبة", di_breaks:"الاستراحات",
+    di_late:"تأخر {0} دقيقة", di_early:"مبكر {0} دقيقة", di_ontime:"في الوقت",
+    di_not_in:"لم يتم الدخول بعد", di_ongoing:"جارٍ",
+    di_no_break:"لا استراحات",
+    lbl_day_status:"حالة اليوم", status_normal:"عادي", status_izin:"إجازة", status_rapor:"إجازة مرضية",
+    badge_izin:"📋 إجازة", badge_rapor:"🏥 مرضية", badge_kismi:"⚠ جزئي",
+    cal_izin:"إجازة", cal_rapor:"مرضية", cal_kismi:"جزئي"
+  }
+};
+function t(key) { return (I18N[dilKodu] && I18N[dilKodu][key] != null) ? I18N[dilKodu][key] : (I18N.tr[key] != null ? I18N.tr[key] : key); }
+function tf(key, ...args) { return args.reduce((s,a,i)=>s.replace("{"+i+"}", a), t(key)); }
+function locArr(name) { return (LOC[dilKodu] && LOC[dilKodu][name]) || LOC.tr[name]; }
+
+/* ===================== Tema ===================== */
+const TEMA_RENK = { modern:"#0ea5a4", koyu:"#0e7490", okyanus:"#2563eb", gunBatimi:"#fb7185" };
+function temaUygula(v) {
+  try { localStorage.setItem(THEME_KEY, v); } catch (e) {}
+  document.documentElement.setAttribute("data-theme", v);
+  const sel = document.getElementById("temaSec"); if (sel) sel.value = v;
+  const tc = document.querySelector('meta[name="theme-color"]');
+  if (tc) tc.content = TEMA_RENK[v] || "#0ea5a4";
+}
+function dilDegistir(v) { dilKodu = v; try { localStorage.setItem(DIL_KEY, v); } catch (e) {} dilUygula(); }
+function dilUygula() {
+  document.documentElement.lang = dilKodu;
+  document.documentElement.dir = (dilKodu === "ar") ? "rtl" : "ltr";
+  const sel = document.getElementById("dilSec"); if (sel) sel.value = dilKodu;
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const v = t(el.dataset.i18n);
+    if (el.dataset.i18nHtml != null) el.innerHTML = v; else el.textContent = v;
+  });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
+  render();
+}
+
+/* ===================== Diyalog ===================== */
+let dialogZinciri = Promise.resolve();
+function dialog(opt) {
+  dialogZinciri = dialogZinciri.then(() => dialogGoster(opt), () => dialogGoster(opt));
+  return dialogZinciri;
+}
+function dialogGoster({ mesaj, onayli = false, tehlikeli = false }) {
+  return new Promise(resolve => {
+    const ov = document.getElementById("dlgOverlay");
+    document.getElementById("dlgMesaj").textContent = mesaj;
+    const evet = document.getElementById("dlgEvet");
+    const hayir = document.getElementById("dlgHayir");
+    hayir.style.display = onayli ? "" : "none";
+    hayir.textContent = t("dlg_cancel");
+    evet.textContent = onayli ? t("dlg_yes") : t("dlg_ok");
+    evet.classList.toggle("b-tehlike", tehlikeli);
+    const oncekiOdak = document.activeElement;
+    ov.classList.add("show");
+    (tehlikeli ? hayir : evet).focus();
+    function kapat(sonuc) {
+      ov.classList.remove("show");
+      evet.onclick = hayir.onclick = null;
+      evet.classList.remove("b-tehlike");
+      document.removeEventListener("keydown", tus, true);
+      if (oncekiOdak && oncekiOdak.focus) oncekiOdak.focus();
+      resolve(sonuc);
+    }
+    function tus(e) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); kapat(false); }
+      else if (e.key === "Tab") {
+        const odaklanabilir = [hayir, evet].filter(b => b.style.display !== "none");
+        e.preventDefault();
+        const i = odaklanabilir.indexOf(document.activeElement);
+        odaklanabilir[(i + (e.shiftKey ? -1 : 1) + odaklanabilir.length) % odaklanabilir.length].focus();
+      }
+    }
+    document.addEventListener("keydown", tus, true);
+    evet.onclick = () => kapat(true);
+    hayir.onclick = () => kapat(false);
+  });
+}
+const onay = (m, tehlikeli = false) => dialog({ mesaj: m, onayli: true, tehlikeli });
+const bilgi = m => dialog({ mesaj: m, onayli: false });
+
+/* ===================== Veri katmanı ===================== */
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY)) || {}; }
+  catch { return {}; }
+}
+function save(data) {
+  try { localStorage.setItem(KEY, JSON.stringify(data)); scheduleSync(); return true; }
+  catch (e) { bilgi(t("err_save_failed")); return false; }
+}
+function hedefSaat() { const v = parseFloat(localStorage.getItem(HEDEF_KEY)); return Number.isFinite(v) ? v : 8.75; }
+function cmtHedefSaat() { const v = parseFloat(localStorage.getItem(CMT_KEY)); return Number.isFinite(v) ? v : 5; }
+function ucret() { const v = parseFloat(localStorage.getItem(UCRET_KEY)); return Number.isFinite(v) ? v : 0; }
+
+function gunDow(key) { const [y,m,d] = key.split("-").map(Number); return new Date(y, m-1, d).getDay(); }
+function gunHedefMs(key) {
+  const g = gunDow(key);
+  if (g === 0) return 0;
+  if (g === 6) return cmtHedefSaat()*3600000;
+  return hedefSaat()*3600000;
+}
+function tatilMi(key) { return gunDow(key) === 0; }
+function kismiMi(key, net) {
+  const g = gunDow(key);
+  if (g === 0) return false;
+  const hedef = gunHedefMs(key);
+  if (hedef <= 0 || net <= 0) return false;
+  return net < hedef;
+}
+function ayarKaydet() {
+  const h = parseFloat(document.getElementById("hedef").value);
+  const c = parseFloat(document.getElementById("cmtHedef").value);
+  const u = parseFloat(document.getElementById("ucret").value);
+  try {
+    localStorage.setItem(HEDEF_KEY, isNaN(h) ? 8.75 : h);
+    localStorage.setItem(CMT_KEY, isNaN(c) ? 5 : c);
+    localStorage.setItem(UCRET_KEY, isNaN(u) ? 0 : u);
+  } catch (e) { bilgi(t("err_setting_save_failed")); }
+  render();
+}
+
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function pad(n){ return String(n).padStart(2,"0"); }
+function dateKey(d){ return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function bugunKey(){ return dateKey(new Date()); }
+
+/* ===================== Süre hesaplama ===================== */
+function oturumMola(o, simdi) {
+  let s = 0;
+  for (const m of (o.molalar||[])) s += (m.bitis ?? simdi) - m.baslangic;
+  return s;
+}
+function tamamlanmamis(o, simdi) {
+  return o.cikis == null && Number.isFinite(o.giris) && (simdi - o.giris) > UYARI_MS;
+}
+function oturumNet(o, simdi) {
+  if (!Number.isFinite(o.giris)) return 0;
+  if (tamamlanmamis(o, simdi)) return 0;
+  const son = o.cikis ?? simdi;
+  return Math.max(0, (son - o.giris) - oturumMola(o, son));
+}
+function gunNet(k, simdi) { return (k.oturumlar||[]).reduce((s,o)=>s+oturumNet(o,simdi),0); }
+function gunMola(k, simdi) { return (k.oturumlar||[]).reduce((s,o)=>s+oturumMola(o, o.cikis ?? simdi),0); }
+function kazanc(ms) { return (ms/3600000) * ucret(); }
+
+function aktifOturum(data) {
+  for (const key of Object.keys(data)) {
+    const o = (data[key].oturumlar||[]).find(s => s.cikis === null);
+    if (o) return { key, oturum: o };
+  }
+  return null;
+}
+function aktifMola(o) { return o ? (o.molalar||[]).find(m => m.bitis === null) : null; }
+
+/* ===================== Formatlama ===================== */
+function fmtSure(ms) {
+  const x = Math.floor(ms/1000);
+  return `${pad(Math.floor(x/3600))}:${pad(Math.floor(x/60)%60)}:${pad(x%60)}`;
+}
+function fmtKisa(ms) {
+  const x = Math.floor(ms/60000);
+  return `${pad(Math.floor(x/60))}:${pad(x%60)}`;
+}
+function fmtSaat(ts) {
+  if (ts == null) return "—";
+  const d = new Date(ts);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtTarih(key) {
+  const [y,m,d] = key.split("-").map(Number);
+  return `${pad(d)}.${pad(m)}.${y} ${locArr("gunUzun")[new Date(y,m-1,d).getDay()]}`;
+}
+function fmtPara(tutar) {
+  if (!ucret()) return "";
+  return tutar.toLocaleString(PARA_LOCALE[dilKodu] || "tr-TR", {minimumFractionDigits:2, maximumFractionDigits:2}) + " ₺";
+}
+function gunFarki(a, b) {
+  const d1 = new Date(a); d1.setHours(0,0,0,0);
+  const d2 = new Date(b); d2.setHours(0,0,0,0);
+  return Math.round((d2 - d1) / 86400000);
+}
+function gunEk(giris, cikis) {
+  if (cikis == null) return "";
+  const f = gunFarki(giris, cikis);
+  return f > 0 ? ` (+${f})` : "";
+}
+
+/* ===================== Eylemler ===================== */
+function girisYap() {
+  const data = load();
+  if (aktifOturum(data)) return;
+  const key = bugunKey();
+  if (!data[key]) data[key] = { tarih: key, oturumlar: [] };
+  data[key].oturumlar.push({ giris: Date.now(), cikis: null, molalar: [] });
+  save(data); render();
+}
+function cikisYap() {
+  const data = load();
+  const a = aktifOturum(data);
+  if (!a) return;
+  const simdi = Date.now();
+  const m = aktifMola(a.oturum);
+  if (m) m.bitis = simdi;
+  a.oturum.cikis = simdi;
+  save(data); render();
+}
+function molaToggle() {
+  const data = load();
+  const a = aktifOturum(data);
+  if (!a) return;
+  const m = aktifMola(a.oturum);
+  if (m) m.bitis = Date.now();
+  else a.oturum.molalar.push({ baslangic: Date.now(), bitis: null, etiket: t("default_break_label") });
+  save(data); render();
+}
+function odakGunEkle() { const b = document.getElementById("gunEkleBtn"); if (b) b.focus(); }
+async function gunSil(key) {
+  if (!await onay(tf("confirm_delete_day", fmtTarih(key)), true)) return;
+  const data = load();
+  delete data[key];
+  save(data); render(); odakGunEkle();
+}
+async function tumunuSil() {
+  if (!await onay(t("confirm_delete_all"), true)) return;
+  try { localStorage.removeItem(KEY); }
+  catch (e) { await bilgi(t("err_delete_failed")); return; }
+  scheduleSync();
+  render(); odakGunEkle();
+}
+function aktifDuzenle() { const a = aktifOturum(load()); if (a) duzenleAc(a.key); }
+async function uyariCikis() {
+  const a = aktifOturum(load());
+  if (!a) return;
+  const sure = fmtSure(Date.now() - a.oturum.giris);
+  if (!await onay(tf("confirm_now_out", sure))) return;
+  cikisYap();
+}
+
+/* ===================== Özet ===================== */
+function haftaBaslangic(d) {
+  const x = new Date(d);
+  const gun = (x.getDay()+6)%7;
+  x.setDate(x.getDate()-gun); x.setHours(0,0,0,0);
+  return x;
+}
+function ozetHesapla() {
+  const data = load(); const simdi = Date.now(); const now = new Date();
+  const hb = haftaBaslangic(now).getTime();
+  const ay = now.getMonth(), yil = now.getFullYear();
+  let hafta = 0, aylik = 0, haftaGun = 0, haftaHedef = 0, tum = 0;
+  for (const key of Object.keys(data)) {
+    const [y,m,d] = key.split("-").map(Number);
+    const tt = new Date(y, m-1, d).getTime();
+    const net = gunNet(data[key], simdi);
+    tum += net;
+    if (tt >= hb) { hafta += net; if (net>0) { haftaGun++; haftaHedef += gunHedefMs(key); } }
+    if (y===yil && (m-1)===ay) aylik += net;
+  }
+  return { hafta, aylik, haftaGun, haftaHedef, tum };
+}
+
+/* ===================== Gün bilgisi ===================== */
+const MESAI_BASLANGIC_SAAT = 8;
+const MESAI_BASLANGIC_DK = 0;
+
+function gunBilgiGuncelle(bugun, simdi) {
+  const kart = document.getElementById("gunBilgiKart");
+  const el = document.getElementById("gunBilgi");
+  if (!bugun || !bugun.oturumlar || !bugun.oturumlar.length) {
+    kart.style.display = "none";
+    return;
+  }
+  kart.style.display = "";
+  const oturumlar = bugun.oturumlar;
+  const ilkGiris = oturumlar[0].giris;
+  const sonOturum = oturumlar[oturumlar.length - 1];
+  const sonCikis = sonOturum.cikis;
+
+  let html = "";
+
+  html += `<div class="gun-bilgi-row"><span class="gb-label">${t("di_clockin")}</span><span class="gb-val">${fmtSaat(ilkGiris)}</span></div>`;
+
+  const girisDate = new Date(ilkGiris);
+  const mesaiBaslangic = new Date(girisDate);
+  mesaiBaslangic.setHours(MESAI_BASLANGIC_SAAT, MESAI_BASLANGIC_DK, 0, 0);
+  const farkDk = Math.round((ilkGiris - mesaiBaslangic.getTime()) / 60000);
+  let gecTxt;
+  if (farkDk > 0) gecTxt = `<span class="gb-val gec">${tf("di_late", farkDk)}</span>`;
+  else if (farkDk < 0) gecTxt = `<span class="gb-val erken">${tf("di_early", Math.abs(farkDk))}</span>`;
+  else gecTxt = `<span class="gb-val erken">${t("di_ontime")}</span>`;
+  html += `<div class="gun-bilgi-row"><span class="gb-label">⏰ ${pad(MESAI_BASLANGIC_SAAT)}:${pad(MESAI_BASLANGIC_DK)}</span>${gecTxt}</div>`;
+
+  if (sonCikis) html += `<div class="gun-bilgi-row"><span class="gb-label">${t("di_clockout")}</span><span class="gb-val">${fmtSaat(sonCikis)}${gunEk(ilkGiris, sonCikis)}</span></div>`;
+  else html += `<div class="gun-bilgi-row"><span class="gb-label">${t("di_clockout")}</span><span class="gb-val" style="color:var(--orange)">${t("di_ongoing")}</span></div>`;
+
+  const bk = bugunKey();
+  html += `<div class="gun-bilgi-row"><span class="gb-label">${t("di_target")}</span><span class="gb-val">${fmtKisa(gunHedefMs(bk))}</span></div>`;
+
+  const tumMolalar = oturumlar.flatMap(o => o.molalar || []);
+  if (tumMolalar.length) {
+    html += `<div class="gun-bilgi-row" style="border-bottom:none"><span class="gb-label">${t("di_breaks")} (${tumMolalar.length})</span></div>`;
+    html += `<div class="gb-molalar">`;
+    for (const m of tumMolalar) {
+      const sure = (m.bitis ?? simdi) - m.baslangic;
+      const etiket = m.etiket ? escapeHtml(m.etiket) : "";
+      html += `<div class="gb-mola-item">
+        <span>${fmtSaat(m.baslangic)} – ${m.bitis ? fmtSaat(m.bitis) : "…"} ${etiket ? `<span class="gb-mola-etiket">(${etiket})</span>` : ""}</span>
+        <span style="font-variant-numeric:tabular-nums">${fmtKisa(sure)}</span>
+      </div>`;
+    }
+    html += `</div>`;
+  } else {
+    html += `<div class="gun-bilgi-row"><span class="gb-label">${t("di_breaks")}</span><span class="gb-val" style="color:var(--muted);font-weight:400">${t("di_no_break")}</span></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+/* ===================== Render ===================== */
+function renderCanli() {
+  const data = load();
+  const a = aktifOturum(data);
+  const simdi = Date.now();
+  const calisiyor = !!a;
+
+  const bk = bugunKey();
+  document.getElementById("today").textContent = fmtTarih(bk);
+  if (bk !== aktifGun) {
+    const ilk = aktifGun !== null;
+    aktifGun = bk;
+    if (ilk) { takvimCiz(data, simdi); liste(data, simdi); }
+  }
+  const molada = a ? aktifMola(a.oturum) : null;
+  const bugun = data[bugunKey()];
+
+  document.getElementById("btnGiris").disabled = calisiyor;
+  document.getElementById("btnCikis").disabled = !calisiyor;
+  const btnMola = document.getElementById("btnMola");
+  btnMola.disabled = !calisiyor;
+  if (molada) { btnMola.textContent = t("btn_mola_end"); btnMola.className = "b-molabit full"; }
+  else { btnMola.textContent = t("btn_mola_start"); btnMola.className = "b-mola full"; }
+
+  let durum = t("status_none"), clock = 0;
+  if (a) {
+    clock = simdi - a.oturum.giris;
+    durum = molada ? t("status_break") : tf("status_working", fmtSaat(a.oturum.giris));
+  } else if (bugun && bugun.oturumlar.length) {
+    const son = bugun.oturumlar[bugun.oturumlar.length-1];
+    durum = tf("status_lastout", fmtSaat(son.cikis));
+  }
+  document.getElementById("status").textContent = durum;
+  document.getElementById("clock").textContent = fmtSure(clock);
+  document.title = a ? `${molada?"☕":"▶"} ${fmtSure(clock)} · ${t("app_title")}` : t("app_title");
+
+  const molaSayacEl = document.getElementById("molaSayac");
+  if (molada) {
+    const molaSure = simdi - molada.baslangic;
+    molaSayacEl.textContent = tf("break_timer", fmtSure(molaSure));
+    molaSayacEl.classList.add("show");
+  } else molaSayacEl.classList.remove("show");
+
+  const uyari = document.getElementById("uyari");
+  if (a && clock > UYARI_MS) {
+    uyari.classList.add("show");
+    document.getElementById("uyariText").textContent = tf("warn_text", Math.floor(clock/3600000));
+  } else uyari.classList.remove("show");
+
+  const bugunNet = bugun ? gunNet(bugun,simdi) : 0;
+  document.getElementById("net").textContent = fmtKisa(bugunNet);
+  document.getElementById("mola").textContent = bugun ? fmtKisa(gunMola(bugun,simdi)) : "00:00";
+  document.getElementById("kazanc").textContent = ucret() ? fmtPara(kazanc(bugunNet)) : "—";
+
+  gunBilgiGuncelle(bugun, simdi);
+
+  const oz = ozetHesapla();
+  document.getElementById("haftaTop").textContent = fmtKisa(oz.hafta);
+  document.getElementById("ayTop").textContent = fmtKisa(oz.aylik);
+  document.getElementById("tumTop").textContent = fmtKisa(oz.tum);
+  document.getElementById("haftaKaz").textContent = fmtPara(kazanc(oz.hafta));
+  document.getElementById("ayKaz").textContent = fmtPara(kazanc(oz.aylik));
+  document.getElementById("tumKaz").textContent = fmtPara(kazanc(oz.tum));
+  if (document.activeElement.id !== "hedef") document.getElementById("hedef").value = hedefSaat();
+  if (document.activeElement.id !== "cmtHedef") document.getElementById("cmtHedef").value = cmtHedefSaat();
+  if (document.activeElement.id !== "ucret") document.getElementById("ucret").value = ucret() || "";
+  if (document.activeElement.id !== "sheetUrl") document.getElementById("sheetUrl").value = sheetUrl();
+  document.getElementById("syncOn").checked = syncAcik();
+
+  if (a) {
+    const gk = a.key, gNet = gunNet(data[gk], simdi);
+    const netEl = document.querySelector(`#liste [data-net-key="${gk}"]`);
+    if (netEl) netEl.innerHTML = fmtKisa(gNet) + (ucret() ? ` · <span class="fark-art">${fmtPara(kazanc(gNet))}</span>` : "");
+    const farkEl = document.querySelector(`#liste [data-fark-key="${gk}"]`);
+    if (farkEl) {
+      const fk = gNet - gunHedefMs(gk);
+      farkEl.className = fk>=0 ? "fark-art" : "fark-eksi";
+      farkEl.textContent = `${fk>=0?'+':'−'}${fmtKisa(Math.abs(fk))}`;
+    }
+    takvimCiz(data, simdi);
+  }
+
+  const hedefMs = oz.haftaHedef;
+  const fark = oz.hafta - hedefMs;
+  if (oz.haftaGun > 0) {
+    document.getElementById("haftaFark").innerHTML =
+      `${tf("week_worked", oz.haftaGun)} · ${tf("week_target_lbl", fmtKisa(hedefMs))} · ` +
+      `<span class="${fark>=0?'fark-art':'fark-eksi'}">${fmtKisa(Math.abs(fark))} ${fark>=0?t("over"):t("under")}</span>`;
+  } else document.getElementById("haftaFark").textContent = "";
+}
+
+function render() {
+  renderCanli();
+  const data = load();
+  const simdi = Date.now();
+  takvimCiz(data, simdi);
+  liste(data, simdi);
+}
+
+/* ===================== Takvim ===================== */
+function takvimGun(mod) { takvimModu = mod; takvimRef = new Date(); render(); }
+function takvimGez(yon) {
+  if (takvimModu === "hafta") takvimRef.setDate(takvimRef.getDate() + yon*7);
+  else { takvimRef.setDate(1); takvimRef.setMonth(takvimRef.getMonth() + yon); }
+  render();
+}
+function takvimGunTikla(key) {
+  if (load()[key]) duzenleAc(key);
+  else kayitEkleAcTarih(key);
+}
+function takvimCiz(data, simdi) {
+  const g7 = document.getElementById("g7"), g30 = document.getElementById("g30");
+  g7.className = "mini" + (takvimModu==="hafta"?" aktif":"");
+  g30.className = "mini" + (takvimModu==="ay"?" aktif":"");
+  g7.setAttribute("aria-pressed", takvimModu==="hafta");
+  g30.setAttribute("aria-pressed", takvimModu==="ay");
+
+  const aylar = locArr("ayUzun"), ayKisa = locArr("ayKisa"), dowBas = locArr("dowBas");
+  const bugunKeyVal = bugunKey();
+
+  let baslik, ilkGun, gunSayisi, ayRef = null;
+  if (takvimModu === "hafta") {
+    ilkGun = haftaBaslangic(takvimRef);
+    gunSayisi = 7;
+    const son = new Date(ilkGun); son.setDate(ilkGun.getDate()+6);
+    baslik = `${ilkGun.getDate()} ${ayKisa[ilkGun.getMonth()]} – ${son.getDate()} ${ayKisa[son.getMonth()]} ${son.getFullYear()}`;
+  } else {
+    ayRef = takvimRef.getMonth();
+    ilkGun = haftaBaslangic(new Date(takvimRef.getFullYear(), ayRef, 1));
+    const sonAy = new Date(takvimRef.getFullYear(), ayRef+1, 0);
+    const sonPazar = haftaBaslangic(sonAy); sonPazar.setDate(sonPazar.getDate()+6);
+    gunSayisi = Math.round((sonPazar - ilkGun)/86400000) + 1;
+    baslik = `${aylar[ayRef]} ${takvimRef.getFullYear()}`;
+  }
+
+  let hucreler = "";
+  for (let i = 0; i < gunSayisi; i++) {
+    const d = new Date(ilkGun); d.setDate(ilkGun.getDate()+i);
+    const key = dateKey(d);
+    const kayit = data[key];
+    const net = kayit ? gunNet(kayit, simdi) : 0;
+    const durum = kayit ? (kayit.durum || "normal") : "normal";
+    const cls = ["cal-cell","tikla"];
+    if (ayRef !== null && d.getMonth() !== ayRef) cls.push("ay-disi");
+    if (key === bugunKeyVal) cls.push("bugun");
+    if (durum === "izin") cls.push("izin-gun");
+    else if (durum === "rapor") cls.push("rapor-gun");
+    else if (net > 0 && kismiMi(key, net)) cls.push("kismi-gun");
+    else if (net > 0) cls.push("calisildi");
+    if (d.getDay() === 0) cls.push("tatil");
+    let altBilgi = "";
+    if (durum === "izin") altBilgi = `<span class="cal-durum cd-izin">${t("cal_izin")}</span>`;
+    else if (durum === "rapor") altBilgi = `<span class="cal-durum cd-rapor">${t("cal_rapor")}</span>`;
+    else if (net > 0 && kismiMi(key, net)) altBilgi = `<span class="cal-net" style="color:var(--orange)">${fmtKisa(net)}</span>`;
+    else if (net > 0) altBilgi = `<span class="cal-net">${fmtKisa(net)}</span>`;
+    hucreler += `<div class="${cls.join(" ")}" title="${fmtTarih(key)}${net>0?': '+fmtKisa(net):''}${durum!=='normal'?' ('+t('cal_'+durum)+')':''}" onclick="takvimGunTikla('${key}')">
+      <span class="gun-no">${d.getDate()}</span>${altBilgi}
+    </div>`;
+  }
+
+  const prevAria = takvimModu==="hafta" ? t("prev_week") : t("prev_month");
+  const nextAria = takvimModu==="hafta" ? t("next_week") : t("next_month");
+  document.getElementById("chart").innerHTML =
+    `<div class="cal-head">
+       <button class="cal-nav" onclick="takvimGez(-1)" aria-label="${prevAria}">‹</button>
+       <span class="cal-title">${baslik}</span>
+       <button class="cal-nav" onclick="takvimGez(1)" aria-label="${nextAria}">›</button>
+     </div>
+     <div class="cal-grid cal-dows">${dowBas.map(x=>`<div class="cal-dow">${x}</div>`).join("")}</div>
+     <div class="cal-grid">${hucreler}</div>`;
+}
+
+/* ===================== Liste ===================== */
+function liste(data, simdi) {
+  const keys = Object.keys(data).sort().reverse();
+  const el = document.getElementById("liste");
+  if (!keys.length) { el.innerHTML = `<div class="empty">${t("empty_list")}</div>`; return; }
+  el.innerHTML = keys.map(key => {
+    const k = data[key];
+    const tatil = tatilMi(key);
+    const hedefMs = gunHedefMs(key);
+    const devam = (k.oturumlar||[]).some(o => o.cikis === null);
+    const net = gunNet(k, simdi);
+    const mola = gunMola(k, simdi);
+    const molalar = (k.oturumlar||[]).flatMap(o => o.molalar||[]);
+    const etiketler = [...new Set(molalar.map(m=>m.etiket).filter(Boolean))].map(escapeHtml);
+    const fark = net - hedefMs;
+    const farkTxt = `<span class="${fark>=0?'fark-art':'fark-eksi'}" data-fark-key="${key}">${fark>=0?'+':'−'}${fmtKisa(Math.abs(fark))}</span>`;
+    const askida = (k.oturumlar||[]).some(o => tamamlanmamis(o, simdi));
+    const sessLines = (k.oturumlar||[]).map(o =>
+      `<div class="sess-line">• ${fmtSaat(o.giris)} – ${o.cikis?fmtSaat(o.cikis)+gunEk(o.giris,o.cikis):'…'}</div>`).join("");
+    const kazTxt = ucret() ? ` · <span class="fark-art">${fmtPara(kazanc(net))}</span>` : "";
+    const molaBaslik = escapeHtml(molalar.map(m=>`${fmtSaat(m.baslangic)}–${m.bitis?fmtSaat(m.bitis)+gunEk(m.baslangic,m.bitis):'…'}${m.etiket?' '+m.etiket:''}`).join(", "));
+    const durumVal = k.durum || "normal";
+    const kismi = durumVal === "normal" && net > 0 && kismiMi(key, net);
+    let rozetler = '';
+    if (devam) rozetler += `<span class="live-badge">${t("badge_ongoing")}</span>`;
+    if (tatil) rozetler += `<span class="tatil-badge">${t("badge_holiday")}</span>`;
+    if (durumVal === "izin") rozetler += `<span class="izin-badge">${t("badge_izin")}</span>`;
+    if (durumVal === "rapor") rozetler += `<span class="rapor-badge">${t("badge_rapor")}</span>`;
+    if (kismi) rozetler += `<span class="kismi-badge">${t("badge_kismi")}</span>`;
+    return `
+      <div class="record">
+        <div class="r-head">
+          <span>${fmtTarih(key)}${rozetler}</span>
+          <span class="r-net" data-net-key="${key}">${fmtKisa(net)}${kazTxt}</span>
+        </div>
+        ${sessLines}
+        <div class="r-row"><span>${tatil?t("row_overtime_holiday"):tf("row_target", fmtKisa(hedefMs))}</span><span>${farkTxt}</span></div>
+        ${molalar.length?`<div class="r-breaks" title="${molaBaslik}">${tf("breaks_summary", molalar.length, fmtKisa(mola))}${etiketler.length?` · ${etiketler.join(", ")}`:''}</div>`:''}
+        ${askida?`<div class="r-breaks" style="color:var(--red)">${t("warn_open_excluded")}</div>`:''}
+        ${k.not?`<div class="r-note">📝 ${escapeHtml(k.not)}</div>`:''}
+        <div class="r-actions">
+          <button class="a-edit" onclick="duzenleAc('${key}')" aria-label="${tf("aria_edit_day", fmtTarih(key))}">${t("btn_edit")}</button>
+          <button class="a-del" onclick="gunSil('${key}')" aria-label="${tf("aria_delete_day", fmtTarih(key))}">${t("btn_delete")}</button>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+/* ===================== Düzenleme / Ekleme modalı ===================== */
+let editState = null;
+function tsToLocal(ts){
+  if (ts==null) return "";
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function localToTs(s){ return s ? new Date(s).getTime() : null; }
+
+function duzenleAc(key) {
+  const k = load()[key];
+  editState = { orijinalKey: key, tarih: key, not: k.not||"", durum: k.durum||"normal", oturumlar: JSON.parse(JSON.stringify(k.oturumlar||[])) };
+  document.getElementById("modalBaslik").textContent = t("modal_edit_title");
+  acModal();
+}
+function kayitEkleAc() {
+  const now = Date.now();
+  editState = { orijinalKey: null, tarih: bugunKey(), not: "", durum: "normal", oturumlar: [{ giris: now, cikis: now, molalar: [] }] };
+  document.getElementById("modalBaslik").textContent = t("modal_add_title");
+  acModal();
+}
+function kayitEkleAcTarih(key) {
+  const [y,m,d] = key.split("-").map(Number);
+  const giris = new Date(y, m-1, d, 9, 0, 0, 0).getTime();
+  const cikis = new Date(y, m-1, d, 17, 0, 0, 0).getTime();
+  editState = { orijinalKey: null, tarih: key, not: "", durum: "normal", oturumlar: [{ giris, cikis, molalar: [] }] };
+  document.getElementById("modalBaslik").textContent = t("modal_add_title");
+  acModal();
+}
+let modalOncekiOdak = null;
+function acModal() {
+  document.getElementById("editDate").value = editState.tarih;
+  document.getElementById("editDurum").value = editState.durum || "normal";
+  document.getElementById("editNot").value = editState.not;
+  modalRender();
+  modalOncekiOdak = document.activeElement;
+  document.getElementById("overlay").classList.add("show");
+  document.getElementById("editDate").focus();
+}
+function modalKapat() {
+  document.getElementById("overlay").classList.remove("show");
+  editState = null;
+  if (modalOncekiOdak && modalOncekiOdak.focus) modalOncekiOdak.focus();
+}
+function modalTusTrap(e) {
+  if (e.key !== "Tab") return;
+  const ov = document.getElementById("overlay");
+  const adaylar = ov.querySelectorAll('button, input, textarea, select, [tabindex]:not([tabindex="-1"])');
+  const gorunur = [...adaylar].filter(el => !el.disabled && el.offsetParent !== null);
+  if (!gorunur.length) return;
+  const ilk = gorunur[0], son = gorunur[gorunur.length - 1];
+  if (e.shiftKey && document.activeElement === ilk) { e.preventDefault(); son.focus(); }
+  else if (!e.shiftKey && document.activeElement === son) { e.preventDefault(); ilk.focus(); }
+}
+
+function modalRender() {
+  document.getElementById("oturumlar").innerHTML = editState.oturumlar.map((o, i) => {
+    const molalar = (o.molalar||[]).map((m, j) => `
+      <div class="mola-satir">
+        <div><label>${t("lbl_break_start")}</label><input type="datetime-local" data-o="${i}" data-mb="${j}" value="${tsToLocal(m.baslangic)}"></div>
+        <div><label>${t("lbl_break_end")}</label><input type="datetime-local" data-o="${i}" data-mbit="${j}" value="${tsToLocal(m.bitis)}"></div>
+        <div><label>${t("lbl_label")}</label><input type="text" data-o="${i}" data-met="${j}" value="${escapeHtml(m.etiket||"")}" placeholder="${t("ph_label")}"></div>
+        <button class="icon-btn" onclick="molaSil(${i},${j})" aria-label="${tf("aria_break_delete", i+1, j+1)}">✕</button>
+      </div>`).join("");
+    return `
+      <div class="oturum-box">
+        <div class="ob-head"><span>${tf("session_n", i+1)}</span><button class="icon-btn" onclick="oturumSil(${i})">${t("btn_session_delete")}</button></div>
+        <div class="grid2">
+          <div><label>${t("lbl_giris")}</label><input type="datetime-local" data-o="${i}" data-giris value="${tsToLocal(o.giris)}"></div>
+          <div><label>${t("lbl_cikis")}</label><input type="datetime-local" data-o="${i}" data-cikis value="${tsToLocal(o.cikis)}"></div>
+        </div>
+        ${molalar}
+        <button class="add-btn" onclick="molaEkle(${i})">${t("btn_add_break")}</button>
+      </div>`;
+  }).join("");
+}
+
+function modalSync() {
+  document.querySelectorAll("#oturumlar input").forEach(inp => {
+    const i = +inp.dataset.o; const o = editState.oturumlar[i]; if (!o) return;
+    if (inp.dataset.giris !== undefined) o.giris = localToTs(inp.value);
+    else if (inp.dataset.cikis !== undefined) o.cikis = localToTs(inp.value);
+    else if (inp.dataset.mb !== undefined) o.molalar[+inp.dataset.mb].baslangic = localToTs(inp.value);
+    else if (inp.dataset.mbit !== undefined) o.molalar[+inp.dataset.mbit].bitis = localToTs(inp.value);
+    else if (inp.dataset.met !== undefined) o.molalar[+inp.dataset.met].etiket = inp.value.trim();
+  });
+  editState.not = document.getElementById("editNot").value;
+  editState.durum = document.getElementById("editDurum").value;
+}
+function oturumEkle(){ modalSync(); const n=Date.now(); editState.oturumlar.push({giris:n,cikis:n,molalar:[]}); modalRender(); }
+function oturumSil(i){ modalSync(); editState.oturumlar.splice(i,1); modalRender(); }
+function molaEkle(i){ modalSync(); const n=Date.now(); editState.oturumlar[i].molalar.push({baslangic:n,bitis:n,etiket:""}); modalRender(); }
+function molaSil(i,j){ modalSync(); editState.oturumlar[i].molalar.splice(j,1); modalRender(); }
+
+async function kaydet() {
+  modalSync();
+  const tarih = document.getElementById("editDate").value;
+  if (!tarih) { await bilgi(t("val_date_empty")); return; }
+  for (const o of editState.oturumlar) {
+    if (!Number.isFinite(o.giris)) { await bilgi(t("val_giris_invalid")); return; }
+    if (o.cikis != null && !Number.isFinite(o.cikis)) { await bilgi(t("val_cikis_invalid")); return; }
+    if (o.cikis != null && o.cikis < o.giris) { await bilgi(t("val_cikis_before")); return; }
+    for (const m of (o.molalar||[])) {
+      if (!Number.isFinite(m.baslangic)) { await bilgi(t("val_break_start_invalid")); return; }
+      if (m.bitis != null && !Number.isFinite(m.bitis)) { await bilgi(t("val_break_end_invalid")); return; }
+      if (m.bitis != null && m.bitis < m.baslangic) { await bilgi(t("val_break_end_before")); return; }
+    }
+  }
+  const acikSayisi = editState.oturumlar.filter(o => o.cikis == null).length;
+  if (acikSayisi > 1) { await bilgi(t("val_multi_open")); return; }
+  const ivler = editState.oturumlar.map(o => [o.giris, o.cikis ?? Infinity]).sort((a,b) => a[0]-b[0]);
+  let maxBitis = -Infinity;
+  for (const [bas, bit] of ivler) {
+    if (bas < maxBitis) { await bilgi(t("val_overlap")); return; }
+    maxBitis = Math.max(maxBitis, bit);
+  }
+  if (acikSayisi === 1) {
+    for (const [dk, kk] of Object.entries(load())) {
+      if (dk === editState.orijinalKey || dk === tarih) continue;
+      if ((kk.oturumlar||[]).some(o => o.cikis == null)) { await bilgi(tf("val_open_elsewhere", fmtTarih(dk))); return; }
+    }
+  }
+  const data = load();
+  if (editState.orijinalKey && editState.orijinalKey !== tarih) delete data[editState.orijinalKey];
+  const durumDegeri = editState.durum || "normal";
+  if (!editState.oturumlar.length && durumDegeri === "normal" && !(editState.not && editState.not.trim())) {
+    delete data[tarih];
+  } else {
+    const kayit = { tarih, oturumlar: editState.oturumlar };
+    if (editState.not && editState.not.trim()) kayit.not = editState.not.trim();
+    if (durumDegeri !== "normal") kayit.durum = durumDegeri;
+    data[tarih] = kayit;
+  }
+  save(data); modalKapat(); render();
+}
+
+/* ===================== Google Sheet senkronizasyonu ===================== */
+function sheetUrl() { return (localStorage.getItem(SHEET_URL_KEY) || "").trim(); }
+function syncAcik() { return localStorage.getItem(SYNC_ON_KEY) === "1"; }
+function senkDurum(msg) { const el = document.getElementById("senkDurum"); if (el) el.textContent = msg; }
+function senkAyarKaydet() {
+  try {
+    localStorage.setItem(SHEET_URL_KEY, document.getElementById("sheetUrl").value.trim());
+    localStorage.setItem(SYNC_ON_KEY, document.getElementById("syncOn").checked ? "1" : "0");
+  } catch (e) { bilgi(t("err_setting_save_failed")); }
+}
+// Apps Script web uygulamasına istek (text/plain → preflight yok, file:// kaynağından çalışır)
+async function senkFetch(payload) {
+  const url = sheetUrl();
+  if (!url) throw new Error(t("sync_need_url"));
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+    redirect: "follow"
+  });
+  const txt = await res.text();
+  let j;
+  try { j = JSON.parse(txt); } catch (e) { throw new Error("HTTP " + res.status); }
+  if (!j.ok) throw new Error(j.error || "server");
+  return j;
+}
+let senkZaman = null;
+function scheduleSync() {
+  if (!sheetUrl() || !syncAcik()) return;
+  clearTimeout(senkZaman);
+  senkZaman = setTimeout(() => senkPush(false), 1500);  // değişiklikleri grupla
+}
+async function senkPush(elle) {
+  if (!sheetUrl()) { senkDurum(t("sync_need_url")); if (elle) bilgi(t("sync_need_url")); return; }
+  senkDurum(t("sync_sending"));
+  try {
+    await senkFetch({ action: "save", data: load() });
+    const z = new Date();
+    try { localStorage.setItem(SONSENK_KEY, z.toISOString()); } catch (e) {}
+    senkDurum(tf("sync_ok", z.toLocaleString(PARA_LOCALE[dilKodu] || "tr-TR")));
+  } catch (e) {
+    senkDurum(tf("sync_err", e.message));
+    if (elle) bilgi(tf("sync_err", e.message));
+  }
+}
+async function senkPull() {
+  if (!sheetUrl()) { bilgi(t("sync_need_url")); return; }
+  if (!await onay(t("sync_pull_confirm"), true)) return;
+  senkDurum(t("sync_loading"));
+  try {
+    const j = await senkFetch({ action: "load" });
+    const gelen = j.data || {};
+    const temiz = {};
+    for (const [k, v] of Object.entries(gelen)) {
+      if (gecerliTarihKey(k) && gecerliGun(v)) temiz[k] = { tarih: k, oturumlar: v.oturumlar, ...(v.not ? { not: v.not } : {}), ...(v.durum && v.durum !== "normal" ? { durum: v.durum } : {}) };
+    }
+    localStorage.setItem(KEY, JSON.stringify(temiz));  // save() değil: geri-push tetiklemesin
+    render();
+    senkDurum(tf("sync_pulled", Object.keys(temiz).length));
+  } catch (e) {
+    senkDurum(tf("sync_err", e.message));
+    bilgi(tf("sync_err", e.message));
+  }
+}
+async function senkTest() {
+  if (!sheetUrl()) { bilgi(t("sync_need_url")); return; }
+  senkDurum(t("sync_testing"));
+  try { await senkFetch({ action: "ping" }); senkDurum(t("sync_test_ok")); }
+  catch (e) { senkDurum(tf("sync_err", e.message)); }
+}
+
+const APPS_SCRIPT_CODE = `/**
+ * DeltaTime — Google Sheets senkronizasyon backend'i
+ *
+ * KURULUM (bir kez):
+ *  1. https://sheets.google.com adresinde yeni bir E-Tablo oluştur.
+ *  2. Üst menü: Uzantılar > Apps Script.
+ *  3. Açılan editördeki tüm kodu sil, bu dosyanın içeriğini yapıştır, kaydet.
+ *  4. Sağ üstte "Dağıt" (Deploy) > "Yeni dağıtım" (New deployment).
+ *  5. Tür (Select type) > "Web uygulaması" (Web app) seç.
+ *     - "Şu kullanıcı olarak çalıştır" (Execute as): Ben (Me)
+ *     - "Erişimi olanlar" (Who has access): "Herkes" (Anyone)
+ *  6. "Dağıt" de, izinleri onayla.
+ *  7. Sana verilen "Web uygulaması URL'si" (…/exec ile biter) adresini kopyala.
+ *  8. DeltaTime uygulamasında "Senkronizasyon" kartına bu URL'yi yapıştır,
+ *     "Otomatik senkronizasyon"u aç. Hepsi bu kadar.
+ */
+
+var SHEET_RAW  = '_veri';
+var SHEET_VIEW = 'Mesai';
+
+function test() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!ss.getSheetByName(SHEET_RAW)) ss.insertSheet(SHEET_RAW);
+  if (!ss.getSheetByName(SHEET_VIEW)) ss.insertSheet(SHEET_VIEW);
+  Logger.log('Kurulum tamam. E-tablo: ' + ss.getName());
+}
+
+function doPost(e) {
+  try {
+    var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if (body.action === 'save') {
+      kaydet(body.data || {});
+      return cikti({ ok: true, count: Object.keys(body.data || {}).length });
+    }
+    if (body.action === 'load') {
+      return cikti({ ok: true, data: yukle() });
+    }
+    if (body.action === 'ping') {
+      return cikti({ ok: true, pong: true });
+    }
+    return cikti({ ok: false, error: 'bilinmeyen islem' });
+  } catch (err) {
+    return cikti({ ok: false, error: String(err) });
+  }
+}
+
+function doGet() {
+  return cikti({ ok: true, info: 'DeltaTime senkron backend aktif' });
+}
+
+function cikti(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function kaydet(data) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var raw = ss.getSheetByName(SHEET_RAW) || ss.insertSheet(SHEET_RAW);
+  raw.clear();
+  raw.getRange(1, 1).setValue(JSON.stringify(data));
+  var view = ss.getSheetByName(SHEET_VIEW) || ss.insertSheet(SHEET_VIEW);
+  view.clear();
+  var basliklar = ['Tarih', 'Oturum', 'Giris', 'Cikis', 'Mola(dk)', 'Net(dk)', 'Etiketler', 'Not'];
+  var satirlar = [basliklar];
+  var simdi = Date.now();
+  Object.keys(data).sort().forEach(function (key) {
+    var k = data[key] || {};
+    (k.oturumlar || []).forEach(function (o, i) {
+      var mola = (o.molalar || []).reduce(function (s, m) {
+        return s + ((m.bitis == null ? simdi : m.bitis) - m.baslangic);
+      }, 0);
+      var son = (o.cikis == null ? simdi : o.cikis);
+      var net = Math.max(0, (son - o.giris) - mola);
+      var etk = (o.molalar || []).map(function (m) { return m.etiket; })
+                  .filter(function (x) { return x; }).join(' / ');
+      satirlar.push([
+        key, i + 1,
+        o.giris ? new Date(o.giris) : '',
+        o.cikis ? new Date(o.cikis) : '',
+        Math.round(mola / 60000), Math.round(net / 60000),
+        etk, i === 0 ? (k.not || '') : ''
+      ]);
+    });
+  });
+  view.getRange(1, 1, satirlar.length, basliklar.length).setValues(satirlar);
+}
+
+function yukle() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var raw = ss.getSheetByName(SHEET_RAW);
+  if (!raw) return {};
+  var v = raw.getRange(1, 1).getValue();
+  if (!v) return {};
+  try { return JSON.parse(v); } catch (e) { return {}; }
+}`;
+
+async function scriptKopyala() {
+  try {
+    await navigator.clipboard.writeText(APPS_SCRIPT_CODE);
+    senkDurum(t("sync_copied"));
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = APPS_SCRIPT_CODE;
+    ta.style.cssText = "position:fixed;left:-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    senkDurum(t("sync_copied"));
+  }
+}
+
+/* ===================== İçe / Dışa aktarma ===================== */
+function indir(icerik, ad, tip) {
+  const blob = new Blob([icerik], { type: tip });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = ad; a.click();
+  URL.revokeObjectURL(url);
+}
+function disaAktarJSON() {
+  indir(JSON.stringify(load(), null, 2), `mesai-yedek-${bugunKey()}.json`, "application/json");
+}
+function disaAktarCSV() {
+  const data = load(); const simdi = Date.now();
+  const sat = [locArr("csvBaslik")];
+  for (const key of Object.keys(data).sort()) {
+    const k = data[key];
+    (k.oturumlar||[]).forEach((o,i) => {
+      const net = oturumNet(o, simdi);
+      const etk = (o.molalar||[]).map(m=>m.etiket).filter(Boolean).join(" / ");
+      sat.push([ key, i+1, fmtSaat(o.giris), o.cikis?fmtSaat(o.cikis)+gunEk(o.giris,o.cikis):"",
+        Math.round(oturumMola(o, o.cikis??simdi)/60000), Math.round(net/60000),
+        ucret()?kazanc(net).toFixed(2).replace(".",","):"", etk, i===0?(k.not||""):"" ]);
+    });
+  }
+  const csvHucre = c => {
+    let s = String(c);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    return `"${s.replace(/"/g,'""')}"`;
+  };
+  const csv = sat.map(r => r.map(csvHucre).join(";")).join("\n");
+  indir("﻿"+csv, `mesai-${bugunKey()}.csv`, "text/csv");
+}
+function gecerliTarihKey(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return false;
+  const [y,m,d] = key.split("-").map(Number);
+  const dt = new Date(y, m-1, d);
+  return dt.getFullYear()===y && dt.getMonth()===m-1 && dt.getDate()===d;
+}
+function gecerliGun(k) {
+  if (typeof k !== "object" || k === null || !Array.isArray(k.oturumlar)) return false;
+  for (const o of k.oturumlar) {
+    if (typeof o !== "object" || o === null) return false;
+    if (!Number.isFinite(o.giris)) return false;
+    if (o.cikis != null && (!Number.isFinite(o.cikis) || o.cikis < o.giris)) return false;
+    if (!Array.isArray(o.molalar)) return false;
+    for (const m of o.molalar) {
+      if (typeof m !== "object" || m === null || !Number.isFinite(m.baslangic)) return false;
+      if (m.bitis != null && (!Number.isFinite(m.bitis) || m.bitis < m.baslangic)) return false;
+    }
+  }
+  return true;
+}
+function iceAktar(ev) {
+  const file = ev.target.files[0]; if (!file) return;
+  const okuyucu = new FileReader();
+  okuyucu.onload = async e => {
+    let gelen;
+    try {
+      gelen = JSON.parse(e.target.result);
+      if (typeof gelen !== "object" || gelen === null || Array.isArray(gelen)) throw new Error();
+    } catch { await bilgi(t("import_invalid_file")); return; }
+
+    const gecerli = {}; let atlanan = 0;
+    for (const [key, k] of Object.entries(gelen)) {
+      if (gecerliTarihKey(key) && gecerliGun(k)) gecerli[key] = { tarih: key, oturumlar: k.oturumlar, ...(k.not?{not:k.not}:{}), ...(k.durum && k.durum !== "normal" ? {durum:k.durum}:{}) };
+      else atlanan++;
+    }
+    const sayi = Object.keys(gecerli).length;
+    if (!sayi) { await bilgi(t("import_none_valid")); return; }
+
+    let mesaj = tf("import_confirm", sayi);
+    if (atlanan) mesaj += " " + tf("import_skipped", atlanan);
+    if (!await onay(mesaj)) return;
+    save({ ...load(), ...gecerli });
+    render();
+    let bitti = tf("import_done", sayi);
+    if (atlanan) bitti += " " + tf("import_skipped_done", atlanan);
+    await bilgi(bitti);
+  };
+  okuyucu.readAsText(file);
+  ev.target.value = "";
+}
+
+/* ===================== Başlat ===================== */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" &&
+      document.getElementById("overlay").classList.contains("show") &&
+      !document.getElementById("dlgOverlay").classList.contains("show")) {
+    modalKapat();
+  }
+});
+document.getElementById("overlay").addEventListener("keydown", modalTusTrap);
+window.addEventListener("storage", e => {
+  if (e.key === THEME_KEY) temaUygula(localStorage.getItem(THEME_KEY) || "modern");
+  else if (e.key === DIL_KEY) { dilKodu = localStorage.getItem(DIL_KEY) || "tr"; dilUygula(); }
+  else if ([KEY, HEDEF_KEY, CMT_KEY, UCRET_KEY, SHEET_URL_KEY, SYNC_ON_KEY].includes(e.key) || e.key === null) render();
+});
+
+temaUygula(localStorage.getItem(THEME_KEY) || "modern");
+dilUygula();                    // dil + dir + statik metinler + ilk render
+// Senkron başlangıç durumu
+(function(){
+  const son = localStorage.getItem(SONSENK_KEY);
+  senkDurum(son ? tf("sync_ok", new Date(son).toLocaleString(PARA_LOCALE[dilKodu] || "tr-TR")) : t("sync_idle"));
+})();
+setInterval(renderCanli, 1000);
+
+// PWA: Service Worker kaydı
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(function(){});
+}
+// PWA: Apple Touch Icon (iOS için canvas'tan PNG)
+(function(){
+  var c = document.createElement('canvas');
+  c.width = c.height = 180;
+  var x = c.getContext('2d');
+  x.fillStyle = '#0ea5a4';
+  x.fillRect(0, 0, 180, 180);
+  x.fillStyle = '#fff';
+  x.beginPath(); x.arc(90, 90, 66, 0, Math.PI * 2); x.fill();
+  x.strokeStyle = '#0f172a'; x.lineCap = 'round';
+  x.lineWidth = 6; x.beginPath(); x.moveTo(90, 90); x.lineTo(70, 46); x.stroke();
+  x.lineWidth = 4; x.beginPath(); x.moveTo(90, 90); x.lineTo(125, 60); x.stroke();
+  x.fillStyle = '#0ea5a4';
+  x.beginPath(); x.arc(90, 90, 5, 0, Math.PI * 2); x.fill();
+  var l = document.createElement('link');
+  l.rel = 'apple-touch-icon';
+  l.href = c.toDataURL('image/png');
+  document.head.appendChild(l);
+})();
+</script>
+</body>
+</html>
